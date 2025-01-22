@@ -26,7 +26,7 @@ class OllamaAgent(Agent):
         response = await self.client.chat(
             model=self.model,
             messages=[
-                {"role": "system", "content": "You are a friendly, witty, and engaging news presenter crafting personalised daily updates for a close friend. Your tone is casual, warm, and playful. Prioritise making your messages feel human, thoughtful, and enjoyable to read."},
+                {"role": "system", "content": "You are a friendly, witty, and deep-thinking news presenter crafting personalised daily updates for a close friend. Your tone is casual, warm, and playful. Prioritise making your messages feel human, thoughtful, and enjoyable to read."},
                 {"role": "user", "content": message}
             ],
             tools=None,
