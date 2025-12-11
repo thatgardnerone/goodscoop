@@ -1,10 +1,14 @@
+import logging
+import random
+
 from telegram import Bot, Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-import random
-import asyncio
+
 from config import config
+
+logger = logging.getLogger(__name__)
 
 class Notifications:
     def __init__(self):
@@ -26,7 +30,7 @@ class Notifications:
             context.user_data['awaiting_name'] = True
             return
 
-        print(f"User subscribed: {self.user_name} (ID: {self.user_id})")
+        logger.info(f"User subscribed: {self.user_name} (ID: {self.user_id})")
         await update.message.reply_text(
             f"Hi {self.user_name}! You've subscribed to daily news updates."
         )
@@ -38,7 +42,7 @@ class Notifications:
         if context.user_data.get('awaiting_name'):
             self.user_name = update.message.text.strip()
             context.user_data['awaiting_name'] = False
-            print(f"User provided their name: {self.user_name} (ID: {self.user_id})")
+            logger.info(f"User provided their name: {self.user_name} (ID: {self.user_id})")
             await update.message.reply_text(
                 f"Thanks, {self.user_name}! You've subscribed to daily notifications."
             )
@@ -55,9 +59,9 @@ class Notifications:
             random_hour = random.randint(0, 23)
             random_minute = random.randint(0, 59)
             trigger = CronTrigger(hour=random_hour, minute=random_minute)
-            print(
+            logger.info(
                 f"Scheduled daily message for {self.user_name} (ID: {self.user_id}) "
-                f"at {random_hour:02d}:{random_minute:02d} UTC."
+                f"at {random_hour:02d}:{random_minute:02d} UTC"
             )
             self.scheduler.add_job(
                 self.send_message,
@@ -71,7 +75,7 @@ class Notifications:
         """Sends the daily message to the user."""
         from main import create_message  # Import dynamically to get the latest content
         message = await create_message()
-        print(f"Sending message to {self.user_name} (ID: {user_id}).")
+        logger.info(f"Sending message to {self.user_name} (ID: {user_id})")
         await self.bot.send_message(chat_id=user_id, text=message)
 
     @staticmethod

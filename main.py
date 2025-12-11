@@ -1,11 +1,22 @@
 # main.py
 
+import logging
+import sys
 from datetime import datetime
 from textwrap import dedent
 
 from app.models.news import News
 from app.services.agents.ollama_agent import OllamaAgent as Agent
 from config import config
+
+# Configure logging to stdout for systemd
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 agent = Agent()
 
@@ -20,7 +31,7 @@ async def create_message():
         "year": now.strftime('%Y'),
         "time": now.strftime('%I:%M %p')
     }
-    print(current_datetime)
+    logger.info(f"Generating message for {current_datetime['day']} {current_datetime['time']}")
 
     instructions = dedent(
         f"""
@@ -52,7 +63,7 @@ async def create_message():
     if "</think>" in summarised_news:
         summarised_news = summarised_news.split("</think>")[1]
     summarised_news = summarised_news.strip()
-    print(summarised_news)
+    logger.debug(f"Generated message: {summarised_news[:100]}...")
 
     return summarised_news
 

@@ -1,21 +1,25 @@
+import logging
+
 from ollama import AsyncClient
 import httpx
 
 from app.services.agents.agent import Agent
 from config import config
 
+logger = logging.getLogger(__name__)
+
 
 class OllamaAgent(Agent):
     def __init__(self):
         host = config("services.ollama.host")
         model = config("services.ollama.model")
-        print(f"Connecting to {host} using model {model}")
+        logger.info(f"Connecting to {host} using model {model}")
 
         # Get request to host and assert response is 200, "Ollama is running"
         response = httpx.get(host)
         response.raise_for_status()
         assert response.text == "Ollama is running"
-        print("Connected to Agent\n")
+        logger.info("Connected to Ollama")
 
         self.client = AsyncClient(host=host)
 
