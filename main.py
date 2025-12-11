@@ -80,20 +80,34 @@ async def create_message():
 
 async def chat_response(user_message: str, history: list[dict]) -> str:
     """Generate a chat response to user message."""
-    # Check if user is asking about news/weather - fetch fresh data if so
-    data_keywords = ["news", "weather", "what's happening", "update", "tell me more",
-                     "forecast", "headlines", "today", "university", "hospital", "tech"]
-    needs_data = any(kw in user_message.lower() for kw in data_keywords)
+    msg_lower = user_message.lower()
+
+    # Detect if this is a follow-up question (references previous context)
+    followup_patterns = ["tell me more", "more about", "what about", "elaborate", "explain",
+                         "that", "this", "the one", "which one", "go on"]
+    is_followup = any(p in msg_lower for p in followup_patterns)
+
+    # Only fetch fresh data for direct questions, not follow-ups
+    # Follow-ups should use conversation history instead
+    data_keywords = ["what's the news", "what's the weather", "what's happening",
+                     "give me an update", "any news", "weather forecast", "headlines"]
+    needs_fresh_data = any(kw in msg_lower for kw in data_keywords) and not is_followup
 
     context = ""
-    if needs_data:
+    if needs_fresh_data:
         all_content = await FetcherRegistry.fetch_all()
         context = f"\n\nCurrent data available:\n{format_content_for_prompt(all_content)}"
 
-    prompt = f"""{user_message}{context}
+    if is_followup:
+        prompt = f"""{user_message}
+
+The user is asking a follow-up question about something from your previous messages.
+Look at the conversation history and respond specifically to their question.
+Don't give a full news update - just answer what they asked about."""
+    else:
+        prompt = f"""{user_message}{context}
 
 Respond as GoodScoop - friendly, warm, and playful like chatting with a friend.
-If they ask about news, weather, or current events, use any data provided above.
 Keep responses concise and conversational."""
 
     return await agent.chat_with_history(prompt, history)
