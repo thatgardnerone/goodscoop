@@ -54,7 +54,11 @@ async def create_message():
     return summarised_news
 
 
-if __name__ == '__main__':
+def run():
+    """Entry point for the goodscoop command."""
     from app.services.notifications import Notifications
-
     Notifications.run()
+
+
+if __name__ == '__main__':
+    run()
