@@ -57,3 +57,25 @@ Your tone is casual, warm, and playful. Make messages feel human and enjoyable -
         reply = reply.strip('\'"')
 
         return reply
+
+    async def chat_with_history(self, message: str, history: list[dict]) -> str:
+        """Chat with conversation history context."""
+        messages = [{"role": "system", "content": self.SYSTEM_PROMPT}]
+        messages.extend(history)
+        messages.append({"role": "user", "content": message})
+
+        response = await self.client.chat(
+            model=self.model,
+            messages=messages,
+            tools=None,
+            stream=False,
+            options={"temperature": self.temperature},
+        )
+
+        reply = response["message"]["content"]
+
+        # Strip DeepSeek R1 thinking tags if present
+        if "</think>" in reply:
+            reply = reply.split("</think>")[1]
+
+        return reply.strip().strip('\'"')

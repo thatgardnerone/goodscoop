@@ -78,6 +78,27 @@ async def create_message():
     return summarised_news
 
 
+async def chat_response(user_message: str, history: list[dict]) -> str:
+    """Generate a chat response to user message."""
+    # Check if user is asking about news/weather - fetch fresh data if so
+    data_keywords = ["news", "weather", "what's happening", "update", "tell me more",
+                     "forecast", "headlines", "today", "university", "hospital", "tech"]
+    needs_data = any(kw in user_message.lower() for kw in data_keywords)
+
+    context = ""
+    if needs_data:
+        all_content = await FetcherRegistry.fetch_all()
+        context = f"\n\nCurrent data available:\n{format_content_for_prompt(all_content)}"
+
+    prompt = f"""{user_message}{context}
+
+Respond as GoodScoop - friendly, warm, and playful like chatting with a friend.
+If they ask about news, weather, or current events, use any data provided above.
+Keep responses concise and conversational."""
+
+    return await agent.chat_with_history(prompt, history)
+
+
 def run():
     """Entry point for the goodscoop command."""
     from app.services.notifications import Notifications

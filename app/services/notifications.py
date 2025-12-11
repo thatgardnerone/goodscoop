@@ -11,6 +11,9 @@ from config import config
 logger = logging.getLogger(__name__)
 
 class Notifications:
+    # Conversation history per user: {user_id: [{"role": "user"|"assistant", "content": "..."}]}
+    conversations: dict[int, list[dict]] = {}
+
     def __init__(self):
         self.bot = Bot(token=config('services.telegram.token'))
         self.scheduler = BackgroundScheduler(timezone="UTC")
@@ -37,17 +40,43 @@ class Notifications:
         await self.send_message(self.user_id)  # Trigger the first message immediately
         self.schedule_random_daily_message()
 
-    async def handle_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handles the user's response for their name."""
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handles all text messages - name input or general chat."""
+        user_id = update.effective_user.id
+        user_message = update.message.text.strip()
+
+        # Handle name input if awaiting
         if context.user_data.get('awaiting_name'):
-            self.user_name = update.message.text.strip()
+            self.user_name = user_message
             context.user_data['awaiting_name'] = False
             logger.info(f"User provided their name: {self.user_name} (ID: {self.user_id})")
             await update.message.reply_text(
                 f"Thanks, {self.user_name}! You've subscribed to daily notifications."
             )
-            await self.send_message(self.user_id)  # Trigger the first message immediately
+            await self.send_message(self.user_id)
             self.schedule_random_daily_message()
+            return
+
+        # Handle as chat message
+        logger.info(f"Chat from {user_id}: {user_message[:50]}...")
+
+        # Get or create conversation history
+        history = self.conversations.get(user_id, [])
+
+        # Add user message to history
+        history.append({"role": "user", "content": user_message})
+
+        # Generate response with history context
+        from main import chat_response
+        response = await chat_response(user_message, history[:-1])  # Exclude current message from history
+
+        # Add assistant response to history
+        history.append({"role": "assistant", "content": response})
+
+        # Trim history to last 20 messages (10 exchanges)
+        self.conversations[user_id] = history[-20:]
+
+        await update.message.reply_text(response)
 
     def schedule_random_daily_message(self):
         """Schedules a random daily message."""
@@ -84,5 +113,5 @@ class Notifications:
         app = Application.builder().token(config('services.telegram.token')).build()
         notifications = Notifications()
         app.add_handler(CommandHandler("start", notifications.start))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, notifications.handle_name))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, notifications.handle_message))
         app.run_polling()
