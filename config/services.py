@@ -12,4 +12,7 @@ config = {
     "telegram": {
         "token": os.getenv("TELEGRAM_TOKEN"),
     },
+    "openweathermap": {
+        "api_key": os.getenv("OPENWEATHERMAP_API_KEY"),
+    },
 }

@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 from textwrap import dedent
 
-from app.models.news import News
+from app.fetchers import FetcherRegistry, format_content_for_prompt
 from app.services.agents.ollama_agent import OllamaAgent as Agent
 from config import config
 
@@ -33,30 +33,40 @@ async def create_message():
     }
     logger.info(f"Generating message for {current_datetime['day']} {current_datetime['time']}")
 
+    # Fetch content from all sources
+    all_content = await FetcherRegistry.fetch_all()
+    formatted_content = format_content_for_prompt(all_content)
+
     instructions = dedent(
         f"""
         INSTRUCTIONS:
-        - Your name is GoodScoop, and you great a personalised summary of the news for your friend {config('app.user.name')}.
+        - Your name is GoodScoop, and you create a personalised daily update for your friend {config('app.user.name')}.
         - Your tone should be warm, conversational, and slightly playful.
-        - Think carefully about the news headlines you are given, and also think about the current date and time to make sure your response is relevant.
-        - Given a long list of news articles, summarise the most important or relevant ones to make a short, engaging message.
-        - You should put a positive or thoughtful spin on the news, including any negative or controversial topics that you pick to summarise.
-    
+        - You have content from multiple sources: weather, local Newcastle news, Newcastle University, Freeman Hospital/NHS, tech/AI news, calendar events, historical facts, and world news.
+
+        CONTENT BALANCING (decide what to include based on relevance and interest):
+        - Weather: Always mention briefly (it's practical for planning the day)
+        - Local Newcastle news (Chronicle Live): Priority over national news - Jamie lives here
+        - Newcastle University news: Relevant to Jamie's PhD studies
+        - Freeman Hospital/NHS news: Relevant to Jamie's wife who works as a paeds ICU nurse there
+        - Tech/AI news: Jamie is interested in technology
+        - Calendar events: Mention bank holidays or seasonal events prominently if relevant
+        - "On this day" historical facts: Use sparingly for variety - only if genuinely interesting
+        - World news: Include major stories but don't overwhelm with too many
+        - Pick 4-6 most relevant/interesting items total. Skip content that seems less relevant today.
+
         OUTPUT REQUIREMENTS:
-        - Start with a greeting that reflects the **current time, day, or notable events**, mentioning the time of day or the progress through the week or something seasonal, as relevant based on this data:
-          {current_datetime}.
-          Be subtle and natural—don’t over-explain the time or date. Think about how a radio presenter on a music station might interrupt a song to say the time before mentioning a little bit of news. 
-        - Plain text only: Your response is an SMS message. Do not use Markdown or special formatting. Use whitespace including newlines, punctuation, and maybe a rare emoji for structure, emphasis and personality.
-        - Length: Keep it concise.
-    
+        - Start with a greeting that reflects the current time, day, or notable events based on: {current_datetime}
+          Be subtle and natural—like a radio presenter giving a quick update.
+        - Plain text only (SMS format). No Markdown. Use whitespace, punctuation, and occasional emojis for personality.
+        - Keep it concise but informative.
+
         DO NOT respond to this prompt; write your reply directed to {config('app.user.name')}.
-    
-        DATA:
+
+        AVAILABLE CONTENT:
+        {formatted_content}
         """
     ).strip()
-
-    latest_news = await News.fetch()
-    instructions += "\n\n".join([f"{title}" for title, summary in latest_news])
 
     summarised_news = await agent.chat(instructions)
     # Strip DeepSeek R1 thinking tags if present
