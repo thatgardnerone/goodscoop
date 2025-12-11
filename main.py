@@ -48,7 +48,10 @@ async def create_message():
     instructions += "\n\n".join([f"{title}" for title, summary in latest_news])
 
     summarised_news = await agent.chat(instructions)
-    summarised_news = summarised_news.split("</think>")[1].strip()
+    # Strip DeepSeek R1 thinking tags if present
+    if "</think>" in summarised_news:
+        summarised_news = summarised_news.split("</think>")[1]
+    summarised_news = summarised_news.strip()
     print(summarised_news)
 
     return summarised_news
